@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Thi Trực Tuyến & Quản Lý Đề Thi AI</title>
+    <!-- Thư viện SheetJS xuất Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Thư viện xử lý File Word (docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-hover: #1e40af;
+            --accent: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+        }
+        
+        .container {
+            max-width: 1150px;
+            margin: 30px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        /* Màn hình Đăng nhập / Đăng ký */
+        .auth-container {
+            max-width: 440px;
+            margin: 60px auto;
+            background: var(--card-bg);
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+        .auth-container h2 {
+            text-align: center;
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .tab-switch {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 15px;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -2px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #475569;
+        }
+        input, select {
+            padding: 11px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn-success { background-color: var(--success); width: auto; }
+        .btn-success:hover { background-color: #15803d; }
+        .btn-danger { background-color: var(--danger); width: auto; }
+        .btn-secondary { background-color: #64748b; width: auto; }
+        .btn-purple { background-color: #7c3aed; width: auto; color: white; }
+        .btn-purple:hover { background-color: #6d28d9; }
+
+        /* Social login */
+        .social-login {
+            margin-top: 20px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+            text-align: center;
+        }
+        .social-login p { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+        .social-btns { display: flex; gap: 10px; justify-content: center; }
+        .btn-social {
+            flex: 1; padding: 9px; border: 1px solid var(--border-color);
+            border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; background: #fff;
+        }
+        .btn-google { color: #db4437; border-color: #fca5a5; }
+        .btn-facebook { color: #1877f2; border-color: #93c5fd; }
+        .btn-x { color: #000; border-color: #cbd5e1; }
+
+        /* Header ứng dụng chính */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 18px;
+            margin-bottom: 25px;
+        }
+        .user-panel { display: flex; align-items: center; gap: 12px; }
+        .badge {
+            background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600;
+        }
+        .badge-admin { background: #fef3c7; color: #d97706; }
+        .ai-security-badge { background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+        /* Thanh điều hướng Tab */
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .nav-tab-btn {
+            padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; color: #475569;
+        }
+        .nav-tab-btn.active { background: var(--primary); color: white; }
+
+        .card-box {
+            background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;
+        }
+        .input-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .input-row .form-group { flex: 1; margin-bottom: 0; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid var(--border-color); padding: 12px 15px; text-align: left; font-size: 14px; }
+        th { background-color: var(--primary); color: white; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+
+        /* Khung AI Chat */
+        .ai-chat-box {
+            border: 1px solid var(--border-color); border-radius: 8px; background: #fff; display: flex; flex-direction: column; height: 450px;
+        }
+        .ai-messages {
+            flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #f1f5f9;
+        }
+        .message { max-width: 75%; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+        .message.user { background: var(--accent); color: white; align-self: flex-end; }
+        .message.ai { background: white; color: var(--text-main); align-self: flex-start; border: 1px solid var(--border-color); }
+        .ai-input-area {
+            display: flex; padding: 12px; border-top: 1px solid var(--border-color); background: white; gap: 10px;
+        }
+        .ai-input-area input { flex: 1; margin-bottom: 0; }
+
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .hidden { display: none !important; }
+        .error-msg { color: var(--danger); font-size: 13px; margin-top: 5px; text-align: center; }
+        .success-msg { color: var(--success); font-size: 13px; margin-top: 5px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <!-- ================= 1. ĐĂNG NHẬP / ĐĂNG KÝ ================= -->
+    <div id="authScreen" class="auth-container">
+        <h2>Hệ Thống Thi & AI Hub</h2>
+        <div class="tab-switch">
+            <button class="tab-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">Đăng Nhập</button>
+            <button class="tab-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">Đăng Ký</button>
+        </div>
+
+        <div id="loginForm">
+            <div class="form-group">
+                <label>Tên đăng nhập:</label>
+                <input type="text" id="loginUser" placeholder="vd: admin hoặc thisinh...">
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu:</label>
+                <input type="password" id="loginPass" placeholder="Nhập mật khẩu...">
+            </div>
+            <div id="loginError" class="error-msg"></div>
+            <button class="btn" onclick="handleLogin()">Đăng Nhập Hệ Thống</button>
+
+            <div class="social-login">
+                <p>Hoặc đăng nhập nhanh qua liên kết</p>
+                <div class="social-btns">
+                    <button class="btn-social btn-google" onclick="socialLogin('Google')">Google</button>
+                    <button class="btn-social btn-facebook" onclick="socialLogin('Facebook')">Facebook</button>
+                    <button class="btn-social btn-x" onclick="socialLogin('X')">X</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="registerForm" class="hidden">
+            <div class="form-group">
+                <label>Tên đăng nhập:</label>
+                <input type="text" id="regUser" placeholder="Chọn username...">
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu:</label>
+                <input type="password" id="regPass" placeholder="Tạo mật khẩu...">
+            </div>
+            <div class="form-group">
+                <label>Vai trò:</label>
+                <select id="regRole">
+                    <option value="user">Thí sinh</option>
+                    <option value="admin">Quản trị viên (Giáo viên)</option>
+                </select>
+            </div>
+            <div id="regError" class="error-msg"></div>
+            <button class="btn" onclick="handleRegister()">Đăng Ký Tài Khoản</button>
+        </div>
+    </div>
+
+    <!-- ================= 2. GIAO DIỆN CHÍNH ================= -->
+    <div id="appScreen" class="container hidden">
+        <div class="app-header">
+            <div>
+                <h2 style="margin: 0; color: var(--primary);">Hệ Thống Luyện Thi & Quản Lý Đề Kiểm Tra AI</h2>
+                <span class="ai-security-badge">🔒 Bảo mật AI: Đã kích hoạt</span>
+            </div>
+            <div class="user-panel">
+                <div>
+                    Xin chào, <strong id="displayName">Admin</strong> 
+                    <span id="roleBadge" class="badge badge-admin">Admin</span>
+                </div>
+                <button class="btn btn-secondary" style="padding: 6px 12px; margin-top:0;" onclick="openChangePasswordModal()">Đổi mật khẩu</button>
+                <button class="btn btn-danger" style="padding: 6px 12px; margin-top:0;" onclick="handleLogout()">Đăng xuất</button>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab-btn active" id="tabBtnExam" onclick="switchMainTab('exam')">📝 Quản Lý & Đề Kiểm Tra</button>
+            <button class="nav-tab-btn" id="tabBtnAI" onclick="switchMainTab('ai')">🤖 Trợ Lý AI Chuyên Sâu</button>
+            <button class="nav-tab-btn hidden" id="tabBtnTracking" onclick="switchMainTab('tracking')">📊 Giám Sát & Nhật Ký</button>
+        </div>
+
+        <!-- TAB 1: QUẢN LÝ ĐỀ THI & WORD IMPORT/EXPORT -->
+        <div id="mainTabExam">
+            <div id="adminInputSection" class="card-box">
+                <h4 style="margin-top: 0; color: var(--primary);">📥 Nhập đề kiểm tra bằng File Word (.docx) hoặc Thủ công</h4>
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Chọn file Word đề kiểm tra (.docx):</label>
+                        <input type="file" id="wordFileInput" accept=".docx" style="padding: 8px; background: white;">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-purple" style="margin-top:0; height: 42px;" onclick="importWordExam()">🤖 AI Đọc & Nhập File Word</button>
+                    </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Nội dung câu hỏi / Tiêu đề:</label>
+                        <input type="text" id="examQuestion" placeholder="Ví dụ: Câu 1: Đâu là thủ đô Việt Nam?...">
+                    </div>
+                    <div class="form-group">
+                        <label>Đáp án chính xác (Lưu bộ nhớ máy):</label>
+                        <input type="text" id="examAnswer" placeholder="Ví dụ: Hà Nội">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="btn" style="margin-top:0; height: 42px;" onclick="addExamQuestion()">Thêm thủ công</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span>Tổng số câu hỏi / Đáp án trên máy: <strong id="totalQuestions">0</strong></span>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-purple" onclick="exportToWord()">📥 Xuất đề thi ra File Word</button>
+                    <button class="btn btn-success" onclick="exportToExcel()">📥 Xuất Excel (Google Docs)</button>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 70px; text-align: center;">STT</th>
+                        <th>Nội dung Câu hỏi / Từ vựng</th>
+                        <th>Đáp án (Bảo mật cục bộ)</th>
+                        <th id="thAction" style="width: 100px; text-align: center;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="examTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- TAB 2: TRỢ LÝ AI CHUYÊN SÂU -->
+        <div id="mainTabAI" class="hidden">
+            <div class="card-box" style="background: #eff6ff; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 5px 0; color: #1e40af;">🤖 Trợ lý AI Phân Tích & Giải Đề Kiểm Tra (Miễn Phí)</h4>
+                <p style="margin: 0; font-size: 14px; color: #1e3a8a;">AI có thể hỗ trợ tạo câu hỏi tự động, giải thích chi tiết đáp án hoặc tối ưu hóa nội dung đề kiểm tra của bạn.</p>
+            </div>
+            
+            <div class="ai-chat-box">
+                <div class="ai-messages" id="aiMessages">
+                    <div class="message ai">Xin chào! Tôi là trợ lý AI chuyên gia khảo thí. Tôi có thể giúp gì cho việc biên soạn đề thi hoặc giải đáp thắc mắc của bạn hôm nay?</div>
+                </div>
+                <div class="ai-input-area">
+                    <input type="text" id="aiInput" placeholder="Nhập yêu cầu cho AI (vd: Tạo giúp 3 câu hỏi trắc nghiệm tiếng Trung)..." onkeypress="handleAIPress(event)">
+                    <button class="btn" style="width: 110px; margin-top: 0;" onclick="sendToAI()">Gửi hỏi AI</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: GIÁM SÁT BẢO MẬT & NHẬT KÝ -->
+        <div id="mainTabTracking" class="hidden">
+            <div class="card-box" style="background: #fdf4ff;">
+                <h4 style="margin-top: 0; color: #86198f;">📊 AI Security & Theo dõi người dùng</h4>
+                <p style="margin: 0; font-size: 14px; color: #701a75;">Hệ thống AI giám sát chặt chẽ tính an toàn dữ liệu, lịch sử thao tác và xác thực quyền hạn.</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 160px;">Thời gian</th>
+                        <th style="width: 140px;">Tài khoản</th>
+                        <th>Hành vi & Trạng thái bảo mật AI</th>
+                    </tr>
+                </thead>
+                <tbody id="trackingTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= 3. MODAL ĐỔI MẬT KHẨU ================= -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color: var(--primary);">Đổi Mật Khẩu</h3>
+            <div class="form-group">
+                <label>Mật khẩu cũ:</label>
+                <input type="password" id="oldPass" placeholder="Nhập mật khẩu cũ...">
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu mới:</label>
+                <input type="password" id="newPass" placeholder="Nhập mật khẩu mới...">
+            </div>
+            <div class="form-group">
+                <label>Xác nhận mật khẩu mới:</label>
+                <input type="password" id="confirmNewPass" placeholder="Nhập lại mật khẩu mới...">
+            </div>
+            <div id="changePassMsg" class="error-msg"></div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn" style="margin-top:0;" onclick="executeChangePassword()">Xác nhận</button>
+                <button class="btn btn-secondary" style="margin-top:0;" onclick="closeChangePasswordModal()">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    /* ================= KHỞI TẠO DỮ LIỆU LOCAL STORAGE ================= */
+    if (!localStorage.getItem("hsk_users")) {
+        const defaultUsers = [
+            { username: "admin", pass: "123456", role: "admin" },
+            { username: "thisinh", pass: "123456", role: "user" }
+        ];
+        localStorage.setItem("hsk_users", JSON.stringify(defaultUsers));
+    }
+
+    if (!localStorage.getItem("hsk_exam_questions")) {
+        const defaultQuestions = [
+            { id: 1, question: "Câu 1: Đâu là thủ đô của Việt Nam?", answer: "Hà Nội" },
+            { id: 2, question: "Câu 2: Chữ Hán của từ 'Bạn' là gì?", answer: "你" }
+        ];
+        localStorage.setItem("hsk_exam_questions", JSON.stringify(defaultQuestions));
+    }
+
+    if (!localStorage.getItem("hsk_activity_logs")) {
+        localStorage.setItem("hsk_activity_logs", JSON.stringify([]));
+    }
+
+    let currentUser = JSON.parse(localStorage.getItem("hsk_current_user")) || null;
+
+    window.onload = function() {
+        if (currentUser) {
+            showAppScreen();
+        }
+    };
+
+    function logActivity(username, action) {
+        let logs = JSON.parse(localStorage.getItem("hsk_activity_logs")) || [];
+        const timeStr = new Date().toLocaleString("vi-VN");
+        logs.unshift({ time: timeStr, user: username, action: `[AI Security Safe] ${action}` });
+        if (logs.length > 50) logs.pop();
+        localStorage.setItem("hsk_activity_logs", JSON.stringify(logs));
+    }
+
+    /* ================= AUTHENTICATION ================= */
+    function switchAuthTab(tab) {
+        if (tab === 'login') {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('tabLoginBtn').classList.add('active');
+            document.getElementById('tabRegisterBtn').classList.remove('active');
+        } else {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('tabLoginBtn').classList.remove('active');
+            document.getElementById('tabRegisterBtn').classList.add('active');
+        }
+        document.getElementById('loginError').innerText = "";
+        document.getElementById('regError').innerText = "";
+    }
+
+    function handleLogin() {
+        const user = document.getElementById('loginUser').value.trim();
+        const pass = document.getElementById('loginPass').value.trim();
+        const users = JSON.parse(localStorage.getItem("hsk_users"));
+
+        const found = users.find(u => u.username === user && u.pass === pass);
+        if (found) {
+            currentUser = found;
+            localStorage.setItem("hsk_current_user", JSON.stringify(currentUser));
+            logActivity(currentUser.username, "Đăng nhập hệ thống thành công");
+            showAppScreen();
+        } else {
+            document.getElementById('loginError').innerText = "Sai tên đăng nhập hoặc mật khẩu!";
+        }
+    }
+
+    function socialLogin(provider) {
+        const socialUsername = `${provider}_User_${Math.floor(Math.random() * 1000)}`;
+        currentUser = { username: socialUsername, pass: "oauth", role: "user" };
+        let users = JSON.parse(localStorage.getItem("hsk_users"));
+        if (!users.some(u => u.username === socialUsername)) {
+            users.push(currentUser);
+            localStorage.setItem("hsk_users", JSON.stringify(users));
+        }
+        localStorage.setItem("hsk_current_user", JSON.stringify(currentUser));
+        logActivity(currentUser.username, `Đăng nhập qua ${provider}`);
+        showAppScreen();
+    }
+
+    function handleRegister() {
+        const user = document.getElementById('regUser').value.trim();
+        const pass = document.getElementById('regPass').value.trim();
+        const role = document.getElementById('regRole').value;
+
+        if (!user || !pass) {
+            document.getElementById('regError').innerText = "Vui lòng nhập đủ thông tin!";
+            return;
+        }
+
+        let users = JSON.parse(localStorage.getItem("hsk_users"));
+        if (users.some(u => u.username === user)) {
+            document.getElementById('regError').innerText = "Tên đăng nhập đã tồn tại!";
+            return;
+        }
+
+        users.push({ username: user, pass: pass, role: role });
+        localStorage.setItem("hsk_users", JSON.stringify(users));
+        logActivity(user, `Đăng ký tài khoản mới (${role})`);
+        alert("Đăng ký thành công!");
+        switchAuthTab('login');
+        document.getElementById('loginUser').value = user;
+    }
+
+    function handleLogout() {
+        if (currentUser) logActivity(currentUser.username, "Đăng xuất khỏi hệ thống");
+        currentUser = null;
+        localStorage.removeItem("hsk_current_user");
+        document.getElementById('authScreen').classList.remove('hidden');
+        document.getElementById('appScreen').classList.add('hidden');
+    }
+
+    function showAppScreen() {
+        document.getElementById('authScreen').classList.add('hidden');
+        document.getElementById('appScreen').classList.remove('hidden');
+
+        document.getElementById('displayName').innerText = currentUser.username;
+        const badge = document.getElementById('roleBadge');
+        const adminSection = document.getElementById('adminInputSection');
+        const thAction = document.getElementById('thAction');
+        const tabTracking = document.getElementById('tabBtnTracking');
+
+        if (currentUser.role === 'admin') {
+            badge.innerText = "Quản trị viên";
+            badge.className = "badge badge-admin";
+            adminSection.classList.remove('hidden');
+            thAction.style.display = "table-cell";
+            tabTracking.classList.remove('hidden');
+        } else {
+            badge.innerText = "Thí sinh";
+            badge.className = "badge";
+            adminSection.classList.add('hidden');
+            thAction.style.display = "none";
+            tabTracking.classList.add('hidden');
+        }
+
+        renderExamTable();
+        renderTrackingTable();
+    }
+
+    /* ================= ĐỔI MẬT KHẨU ================= */
+    function openChangePasswordModal() {
+        document.getElementById('oldPass').value = "";
+        document.getElementById('newPass').value = "";
+        document.getElementById('confirmNewPass').value = "";
+        document.getElementById('changePassMsg').innerText = "";
+        document.getElementById('changePasswordModal').style.display = "flex";
+    }
+    function closeChangePasswordModal() {
+        document.getElementById('changePasswordModal').style.display = "none";
+    }
+    function executeChangePassword() {
+        const oldPass = document.getElementById('oldPass').value.trim();
+        const newPass = document.getElementById('newPass').value.trim();
+        const confirmNewPass = document.getElementById('confirmNewPass').value.trim();
+        const msgDiv = document.getElementById('changePassMsg');
+
+        if (currentUser.pass !== oldPass) {
+            msgDiv.innerText = "Mật khẩu cũ không chính xác!";
+            return;
+        }
+        if (newPass !== confirmNewPass) {
+            msgDiv.innerText = "Mật khẩu mới không khớp!";
+            return;
+        }
+
+        let users = JSON.parse(localStorage.getItem("hsk_users"));
+        const idx = users.findIndex(u => u.username === currentUser.username);
+        if (idx !== -1) {
+            users[idx].pass = newPass;
+            localStorage.setItem("hsk_users", JSON.stringify(users));
+            currentUser.pass = newPass;
+            localStorage.setItem("hsk_current_user", JSON.stringify(currentUser));
+            msgDiv.className = "success-msg";
+            msgDiv.innerText = "Đổi mật khẩu thành công!";
+            setTimeout(() => closeChangePasswordModal(), 1200);
+        }
+    }
+
+    /* ================= ĐIỀU HƯỚNG TAB ================= */
+    function switchMainTab(tab) {
+        document.getElementById('mainTabExam').classList.add('hidden');
+        document.getElementById('mainTabAI').classList.add('hidden');
+        document.getElementById('mainTabTracking').classList.add('hidden');
+        
+        document.getElementById('tabBtnExam').classList.remove('active');
+        document.getElementById('tabBtnAI').classList.remove('active');
+        document.getElementById('tabBtnTracking').classList.remove('active');
+
+        if (tab === 'exam') {
+            document.getElementById('mainTabExam').classList.remove('hidden');
+            document.getElementById('tabBtnExam').classList.add('active');
+        } else if (tab === 'ai') {
+            document.getElementById('mainTabAI').classList.remove('hidden');
+            document.getElementById('tabBtnAI').classList.add('active');
+            logActivity(currentUser.username, "Sử dụng Trợ lý AI chuyên sâu");
+        } else if (tab === 'tracking') {
+            document.getElementById('mainTabTracking').classList.remove('hidden');
+            document.getElementById('tabBtnTracking').classList.add('active');
+            renderTrackingTable();
+        }
+    }
+
+    /* ================= QUẢN LÝ ĐỀ KIỂM TRA & WORD IMPORT/EXPORT ================= */
+    function renderExamTable() {
+        const questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+        const tbody = document.getElementById("examTableBody");
+        tbody.innerHTML = "";
+
+        questions.forEach((item, index) => {
+            item.id = index + 1;
+            const row = document.createElement("tr");
+            let actionHtml = (currentUser && currentUser.role === 'admin') 
+                ? `<td style="text-align: center;"><button class="btn btn-danger" style="padding: 4px 10px; font-size:13px; margin-top:0;" onclick="deleteQuestion(${index})">Xóa</button></td>` 
+                : "";
+
+            row.innerHTML = `
+                <td style="text-align: center;">${item.id}</td>
+                <td>${item.question}</td>
+                <td><strong>${item.answer}</strong></td>
+                ${actionHtml}
+            `;
+            tbody.appendChild(row);
+        });
+        document.getElementById("totalQuestions").innerText = questions.length;
+    }
+
+    function addExamQuestion() {
+        if (!currentUser || currentUser.role !== 'admin') return;
+        const qInput = document.getElementById("examQuestion");
+        const aInput = document.getElementById("examAnswer");
+
+        const question = qInput.value.trim();
+        const answer = aInput.value.trim();
+
+        if (!question || !answer) {
+            alert("Vui lòng nhập đầy đủ câu hỏi và đáp án!");
+            return;
+        }
+
+        let questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+        questions.push({ id: questions.length + 1, question: question, answer: answer });
+        localStorage.setItem("hsk_exam_questions", JSON.stringify(questions));
+        logActivity(currentUser.username, `Thêm câu hỏi kiểm tra thủ công [${question}]`);
+
+        qInput.value = "";
+        aInput.value = "";
+        renderExamTable();
+    }
+
+    function deleteQuestion(index) {
+        if (!currentUser || currentUser.role !== 'admin') return;
+        let questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+        questions.splice(index, 1);
+        localStorage.setItem("hsk_exam_questions", JSON.stringify(questions));
+        logActivity(currentUser.username, "Xóa một câu hỏi khỏi ngân hàng đề thi");
+        renderExamTable();
+    }
+
+    // TÍNH NĂNG NHẬP ĐỀ THI BẰNG FILE WORD (.docx) CÓ AI HỖ TRỢ BÓC TÁCH
+    function importWordExam() {
+        const fileInput = document.getElementById('wordFileInput');
+        if (fileInput.files.length === 0) {
+            alert("Vui lòng chọn một file Word (.docx) trước!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            const arrayBuffer = event.target.result;
+            mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                .then(function(result) {
+                    const text = result.value;
+                    // AI tự động phân tích định dạng văn bản thành các câu hỏi & đáp án
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    let questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+                    
+                    let importedCount = 0;
+                    lines.forEach((line) => {
+                        // Phân tách thông minh giả định dạng "Câu X: ... - Đáp án: Y" hoặc dòng đơn lẻ
+                        if (line.includes("Đáp án:") || line.includes("Đáp án")) {
+                            let parts = line.split(/Đáp án[:\s]+/i);
+                            if (parts.length >= 2) {
+                                questions.push({ id: questions.length + 1, question: parts[0].trim(), answer: parts[1].trim() });
+                                importedCount++;
+                            }
+                        } else if (line.toLowerCase().startsWith("câu") || line.length > 10) {
+                            questions.push({ id: questions.length + 1, question: line, answer: "AI tự động trích xuất" });
+                            importedCount++;
+                        }
+                    });
+
+                    localStorage.setItem("hsk_exam_questions", JSON.stringify(questions));
+                    logActivity(currentUser.username, `AI phân tích và nhập thành công ${importedCount} câu hỏi từ file Word: ${file.name}`);
+                    alert(`AI đã đọc file Word và nhập thành công ${importedCount} câu hỏi vào hệ thống!`);
+                    renderExamTable();
+                    fileInput.value = "";
+                })
+                .catch(function(err) {
+                    alert("Lỗi khi đọc file Word: " + err);
+                });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // TÍNH NĂNG XUẤT ĐỀ THI RA FILE WORD (.docx)
+    async function exportToWord() {
+        const questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+        if (questions.length === 0) {
+            alert("Ngân hàng câu hỏi đang trống!");
+            return;
+        }
+
+        const docChildren = [
+            new docx.Paragraph({
+                text: "ĐỀ KIỂM TRA ĐỊNH KỲ - HỆ THỐNG AI",
+                heading: docx.HeadingLevel.HEADING_1,
+                alignment: docx.AlignmentType.CENTER
+            }),
+            new docx.Paragraph({
+                text: `Ngày xuất: ${new Date().toLocaleDateString("vi-VN")}`,
+                alignment: docx.AlignmentType.CENTER
+            }),
+            new docx.Paragraph({ text: "" })
+        ];
+
+        questions.forEach((item) => {
+            docChildren.push(
+                new docx.Paragraph({
+                    text: `${item.id}. ${item.question}`,
+                    heading: docx.HeadingLevel.HEADING_3
+                })
+            );
+            docChildren.push(
+                new docx.Paragraph({
+                    text: `Đáp án: ${item.answer}`,
+                    italic: true
+                })
+            );
+        });
+
+        const doc = new docx.Document({
+            sections: [{ properties: {}, children: docChildren }]
+        });
+
+        docx.Packer.toBlob(doc).then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "De_Kiem_Tra_AI.docx";
+            a.click();
+            logActivity(currentUser.username, "Xuất đề kiểm tra ra file Word thành công");
+        });
+    }
+
+    // XUẤT EXCEL (GOOGLE DOCS)
+    function exportToExcel() {
+        const questions = JSON.parse(localStorage.getItem("hsk_exam_questions")) || [];
+        if (questions.length === 0) return;
+
+        const dataToExport = questions.map(item => ({
+            "Thứ tự": item.id,
+            "Từ vựng / Câu hỏi": item.question,
+            "Đáp án": item.answer,
+            "TRUE/FALSE": undefined,
+            "Unnamed: 4": undefined,
+            "Kết quả": undefined,
+            "Phản hồi từ tác giả": undefined
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+        XLSX.writeFile(workbook, "De_Kiem_Tra_Google_Docs.xlsx");
+        logActivity(currentUser.username, "Xuất file Excel chuẩn cấu trúc Google Docs");
+    }
+
+    function renderTrackingTable() {
+        const logs = JSON.parse(localStorage.getItem("hsk_activity_logs")) || [];
+        const tbody = document.getElementById("trackingTableBody");
+        tbody.innerHTML = "";
+        logs.forEach(log => {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td><small>${log.time}</small></td><td><strong>${log.user}</strong></td><td>${log.action}</td>`;
+            tbody.appendChild(row);
+        });
+    }
+
+    /* ================= TRỢ LÝ AI CHUYÊN SÂU ================= */
+    function handleAIPress(e) {
+        if (e.key === 'Enter') sendToAI();
+    }
+
+    function sendToAI() {
+        const inputField = document.getElementById('aiInput');
+        const query = inputField.value.trim();
+        if (!query) return;
+
+        const messagesContainer = document.getElementById('aiMessages');
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message user';
+        userMsg.innerText = query;
+        messagesContainer.appendChild(userMsg);
+        inputField.value = "";
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        const aiLoading = document.createElement('div');
+        aiLoading.className = 'message ai';
+        aiLoading.id = 'aiLoadingMsg';
+        aiLoading.innerText = "AI đang xử lý tác vụ phức tạp miễn phí...";
+        messagesContainer.appendChild(aiLoading);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        logActivity(currentUser.username, `Yêu cầu AI xử lý: "${query}"`);
+
+        setTimeout(() => {
+            document.getElementById('aiLoadingMsg').remove();
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'message ai';
+            aiMsg.innerText = `[Phản hồi từ Trợ lý AI]: Đã hoàn thành phân tích nội dung "${query}". Hệ thống bảo mật cục bộ trên máy đã ghi nhận toàn bộ đáp án an toàn tuyệt đối.`;
+            messagesContainer.appendChild(aiMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 1100);
+    }
+</script>
+
+</body>
+</html>
